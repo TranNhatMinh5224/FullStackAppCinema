@@ -5,7 +5,7 @@ class RedisManager:
         # Kết nối với Redis qua URL
         self.redis = redis.from_url(redis_url, decode_responses=True)
 
-    async def set_ghe_tam_thoi(self, suat_chieu_id, ghe_id, user_id, timeout=60):
+    async def set_ghe_tam_thoi(self, suat_chieu_id, ghe_id, user_id, timeout=3000):
         # New key pattern: seat:{schedule_id}:{seat_id}
         key = f"seat:{suat_chieu_id}:{ghe_id}"
         if await self.redis.exists(key):

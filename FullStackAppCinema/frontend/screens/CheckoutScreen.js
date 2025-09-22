@@ -94,7 +94,7 @@ const CheckoutScreen = ({ route, navigation }) => {
                 navigation.goBack();
                 return;
             }
-            
+
             const user = JSON.parse(userData);
             if (!user || !user.id) {
                 console.warn("Invalid user data, cannot delete seats");
@@ -122,7 +122,7 @@ const CheckoutScreen = ({ route, navigation }) => {
         }
     };
 
-    const [secondsLeft, setSecondsLeft] = useState(60); // 5 phút = 300 giây
+    const [secondsLeft, setSecondsLeft] = useState(3000); // 5 phút = 300 giây
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -179,9 +179,9 @@ const CheckoutScreen = ({ route, navigation }) => {
 
             {/* Chọn phương thức thanh toán */}
             <Text style={styles.sectionTitle}>PHƯƠNG THỨC THANH TOÁN</Text>
-            
+
             <View style={styles.paymentMethodContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.paymentMethodOption, paymentMethod === 'momo' && styles.paymentMethodSelected]}
                     onPress={() => setPaymentMethod('momo')}
                 >
@@ -194,7 +194,7 @@ const CheckoutScreen = ({ route, navigation }) => {
                     {paymentMethod === 'momo' && <Icon name="check-circle" size={20} color={COLORS.primary} />}
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.paymentMethodOption, paymentMethod === 'payos' && styles.paymentMethodSelected]}
                     onPress={() => setPaymentMethod('payos')}
                 >
@@ -216,7 +216,7 @@ const CheckoutScreen = ({ route, navigation }) => {
                 marginTop: 10,
                 fontWeight: 'bold',
             }}>
-                {`Thời gian giữ ghế: ${Math.floor(secondsLeft / 60)}:${(secondsLeft % 60).toString().padStart(2, '0')}`}
+                {`Thời gian giữ ghế: ${Math.floor(secondsLeft / 3000)}:${(secondsLeft % 60).toString().padStart(2, '0')}`}
             </Text>
 
             <TouchableOpacity style={styles.payButton} onPress={handlePayment}>
