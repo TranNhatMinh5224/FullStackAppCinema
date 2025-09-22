@@ -235,7 +235,7 @@ const ForgetPasswordScreen = () => {
     return (
         <ScrollView contentContainerStyle={styles.scrollContainer}>
             <Header title="Quên mật khẩu" navigation={navigation} onBack={handleBack} />
-            <Image source={require("../assets/img/banner.png")} style={styles.imageRegister} resizeMode="contain" />
+            <Image source={require("../assets/img/banner.png")} style={styles.imageRegister} />
             <View>
                 <Text style={styles.header}>Lấy lại mật khẩu</Text>
                 <Text style={styles.stepIndicator}>Bước {step}/3</Text>
@@ -282,9 +282,19 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     imageRegister: {
-        marginBottom: 25,
-        width: 120,
-        height: 120,
+        width: "95%",
+        alignSelf: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        marginBottom: 20,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     input: {
         width: "100%",

@@ -125,10 +125,19 @@ const styles = StyleSheet.create({
         fontFamily: "Roboto", // Added font family
     },
     banner: {
-        width: "100%",
-        height: 200,
-        marginBottom: 40,
-        resizeMode: 'cover',
+        width: "95%",
+        alignSelf: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        marginBottom: 20,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     form: {
         flex: 1,

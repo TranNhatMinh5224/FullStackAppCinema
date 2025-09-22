@@ -140,7 +140,7 @@ const SignupScreen = ({ navigation }) => {
                     showsVerticalScrollIndicator={false}
                 >
                     <Header title="Đăng ký" navigation={navigation} />
-                    <Image source={require("../assets/img/banner.png")} style={styles.imageRegister} resizeMode="contain" />
+                    <Image source={require("../assets/img/banner.png")} style={styles.imageRegister} />
                     <View style={styles.container}>
                         <InputField 
                             placeholder="Họ tên" 
@@ -257,8 +257,11 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
     imageRegister: {
-        marginBottom: 30,
-        borderRadius: 15,
+        width: "95%",
+        alignSelf: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        marginBottom: 20,
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
