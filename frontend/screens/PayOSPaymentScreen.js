@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createPaymentLink } from '../service/payosService';
+import { UserContext } from '../context/UserContext';
 
 const PayOSPaymentScreen = ({ navigation, route }) => {
   const { movie, selectedDay, selectedTime, selectedSeats, selectedSeatIds, showtimeId, price } = route.params;
+  const { user } = useContext(UserContext);
   const [loading, setLoading] = useState(false);
   const [productName, setProductName] = useState(movie?.title || 'Vé xem phim');
   const [amount, setAmount] = useState(price?.toString() || '50000');
@@ -33,20 +34,18 @@ const PayOSPaymentScreen = ({ navigation, route }) => {
       console.log('Starting PayOS payment...', { productName, amount: amountNum, description });
       console.log('Booking data:', { selectedSeatIds, showtimeId, price });
 
-      // Lấy user_id từ AsyncStorage
-      const userData = await AsyncStorage.getItem("user");
-      if (!userData) {
+      // Kiểm tra user từ UserContext
+      if (!user) {
         Alert.alert('Lỗi', 'Vui lòng đăng nhập lại');
         navigation.navigate('Login');
         return;
       }
       
-      const user = JSON.parse(userData);
       console.log('Current user:', user);
       
       // Tạo booking data với user_id thực
       const bookingData = {
-        user_id: parseInt(user.id), // User ID thực từ login
+        user_id: user ? parseInt(user.id) : null, // User ID thực từ login
         suat_chieu_id: showtimeId,
         ghe_ids: selectedSeatIds || [385], // Ghế mẫu nếu không có
         tong_gia: amountNum
@@ -179,6 +178,8 @@ const styles = StyleSheet.create({
     margin: 20,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 50,
   },
   buttonDisabled: {
     backgroundColor: '#ccc',
@@ -187,6 +188,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

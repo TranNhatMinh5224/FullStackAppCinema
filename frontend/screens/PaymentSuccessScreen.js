@@ -136,17 +136,21 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
     marginBottom: 10,
+    paddingHorizontal: 20,
+    lineHeight: 32,
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
     marginBottom: 20,
+    paddingHorizontal: 20,
+    lineHeight: 22,
   },
   detailsContainer: {
     backgroundColor: 'white',
@@ -183,11 +187,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
+    minHeight: 50,
   },
   primaryButtonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
+    textAlign: 'center',
+    flex: 1,
   },
   secondaryButton: {
     backgroundColor: 'white',
@@ -199,11 +206,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
+    minHeight: 50,
   },
   secondaryButtonText: {
     color: '#007bff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
+    textAlign: 'center',
+    flex: 1,
   },
 });
 

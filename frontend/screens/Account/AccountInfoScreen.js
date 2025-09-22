@@ -69,8 +69,8 @@ const AccountInfoScreen = ({ route, navigation }) => {
                 dia_chi: address
             };
 
-            const userNew = await updateUserInfo(user.id, updatedUser);
-            await AsyncStorage.setItem("user", JSON.stringify(userNew));
+            const userNew = await updateUserInfo(user?.id, updatedUser);
+            // Cập nhật UserContext thay vì AsyncStorage trực tiếp
             Alert.alert("Thành công", "Thông tin đã được cập nhật!");
             navigation.navigate("Home");
 

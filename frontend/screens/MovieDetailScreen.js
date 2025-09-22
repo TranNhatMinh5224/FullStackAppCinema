@@ -1,10 +1,9 @@
 
 
 // export default MovieDetail;
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, FlatList, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Alert } from "react-native"; // Import Alert để hiển thị thông báo
 import axios from 'axios';
@@ -13,19 +12,21 @@ import MovieInfo from '../components/MovieInfor';
 import BookingModal from '../components/BookingModal';
 import { getMovieDetails } from '../service/APIservice';
 import COLORS from '../assets/color'; // Import màu sắc từ file color.js
+import { UserContext } from '../context/UserContext';
 
 
 const MovieDetail = ({ route, navigation }) => {
     const { movie } = route.params;
+    const { user } = useContext(UserContext);
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedDay, setSelectedDay] = useState('');
+    const [selectedTime, setSelectedTime] = useState('');
     const [availableDates, setAvailableDates] = useState([]);
     const [selectedTimes, setSelectedTimes] = useState([]);
 
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
     const [reviews, setReviews] = useState([]);
-    const [currentUser, setCurrentUser] = useState(null);
 
     const [data, setData] = useState(null);
     const [button, setButton] = useState(false);
@@ -48,7 +49,6 @@ const MovieDetail = ({ route, navigation }) => {
     useEffect(() => {
         console.log(movie);
         if (data) {  // Kiểm tra xem data đã có chưa
-            loadCurrentUser();
             // loadReviews();
             generateWeek();
             console.log(data.hinh_anh)
@@ -58,17 +58,7 @@ const MovieDetail = ({ route, navigation }) => {
 
 
 
-    // Lấy thông tin user hiện tại
-    const loadCurrentUser = async () => {
-        try {
-            const userData = await AsyncStorage.getItem("user");
-            if (userData) {
-                setCurrentUser(JSON.parse(userData));
-            }
-        } catch (error) {
-            console.error("Lỗi khi tải thông tin user:", error);
-        }
-    };
+    // Không cần loadCurrentUser nữa vì đã có user từ UserContext
 
 
 
@@ -82,10 +72,7 @@ const MovieDetail = ({ route, navigation }) => {
     const handleSelect = async (time) => {
 
         try {
-            const userData = await AsyncStorage.getItem("user");
-            console.log(userData)
-
-            if (!userData) {
+            if (!user) {
                 // Nếu chưa đăng nhập, hiển thị cảnh báo và chuyển sang trang đăng nhập
                 Alert.alert(
                     "Thông báo",
@@ -112,8 +99,9 @@ const MovieDetail = ({ route, navigation }) => {
             console.log("Suất chiếu:", foundShowtime.id);
 
             // Chuyển sang màn hình chọn ghế và truyền thêm id của suất chiếu
-            setModalVisible(false);
-            navigation.navigate("SelectSeat", {
+            // Không đóng modal để khi quay lại vẫn hiển thị lịch
+            setSelectedTime(time); // Lưu selectedTime
+            navigation.push("SelectSeat", {
                 movie: movie,
                 selectedDay: selectedDay,
                 selectedTime: time,

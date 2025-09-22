@@ -1,44 +1,23 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator } from "react-native";
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ticket } from "../service/APIservice";
 import Header from "../components/Header"; // Import Header component
 import TabTicket from "../components/TabTicket"; // Import TabTicket component
 import TicketList from "../components/TicketList";
 import COLORS from "../assets/color";
+import { UserContext } from "../context/UserContext";
 
 
 
 
 
 const MyTicketsScreen = ({ route, navigation }) => {
-    const [user, setUser] = useState(null);
+    const { user } = useContext(UserContext);
     const [selectedTab, setSelectedTab] = useState("upcoming"); // "upcoming" hoặc "watched"
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    // Lấy user từ AsyncStorage
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const userData = await AsyncStorage.getItem("user");
-                if (userData) {
-                    const parsedUser = JSON.parse(userData);
-                    console.log('PurchasedTicketScreen: User loaded from AsyncStorage:', parsedUser);
-                    setUser(parsedUser);
-                } else {
-                    console.log('PurchasedTicketScreen: No user data in AsyncStorage');
-                    setUser(null);
-                }
-            } catch (error) {
-                console.error('Error loading user:', error);
-                setUser(null);
-            }
-        };
-        fetchUser();
-    }, []);
 
     useEffect(() => {
         if (!user) {
@@ -49,8 +28,8 @@ const MyTicketsScreen = ({ route, navigation }) => {
         console.log('User from AsyncStorage:', user);
         const fetchTickets = async () => {
             try {
-                console.log('Fetching tickets for user ID:', user.id);
-                const response = await ticket(user.id);
+                console.log('Fetching tickets for user ID:', user?.id);
+                const response = await ticket(user?.id);
                 console.log('Tickets fetched:', response);
                 
                 // Lấy data từ response

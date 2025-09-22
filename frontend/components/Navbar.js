@@ -1,14 +1,15 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import { View, Text, Image, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Animated, Modal, Dimensions } from 'react-native';
 import Icon from "react-native-vector-icons/FontAwesome5";
 import { useNavigation } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import COLORS from '../assets/color';
 import { ticket } from "../service/APIservice";
+import { UserContext } from "../context/UserContext";
 
 const MENU_WIDTH = 200;
 
 const NavBar = ({ user, refreshTrigger }) => {
+    const { setUser } = useContext(UserContext);
     const [menuVisible, setMenuVisible] = useState(false);
     const [ticketCount, setTicketCount] = useState(0);
     const slideAnim = useRef(new Animated.Value(MENU_WIDTH)).current; // Bắt đầu ngoài màn hình
@@ -61,10 +62,22 @@ const NavBar = ({ user, refreshTrigger }) => {
         }
     };
 
+    // Xử lý khi user thay đổi
     useEffect(() => {
-        console.log('Navbar useEffect triggered - user:', user, 'refreshTrigger:', refreshTrigger);
-        fetchTickets();
-    }, [user, refreshTrigger]);
+        if (user) {
+            fetchTickets();
+        } else {
+            setTicketCount(0);
+        }
+    }, [user]);
+
+    // Xử lý khi refreshTrigger thay đổi (chỉ khi user tồn tại)
+    useEffect(() => {
+        console.log('Navbar refreshTrigger useEffect triggered:', refreshTrigger);
+        if (user && refreshTrigger > 0) {
+            fetchTickets();
+        }
+    }, [refreshTrigger]);
 
     const handleUserPress = () => {
         if (user) {
@@ -91,7 +104,7 @@ const NavBar = ({ user, refreshTrigger }) => {
     };
 
     const handleLogout = async () => {
-        await AsyncStorage.removeItem("user");
+        await setUser(null); // Sử dụng UserContext để đăng xuất
         navigation.replace("Home");
     };
 

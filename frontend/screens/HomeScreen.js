@@ -1,20 +1,20 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { View, Text, TextInput, FlatList, Image, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Animated, Easing } from 'react-native';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import NavBar from '../components/Navbar';
 import TabBar from '../components/TabBar';
 import SearchBar from '../components/Searchbar';
 import MovieList from '../components/MovieList';
 import { getMovies, getMoviesUpcoming } from '../service/APIservice';
 import COLORS from '../assets/color';
+import { UserContext } from '../context/UserContext';
 
 
 const HomeScreen = ({ navigation }) => {
+    const { user, setUser } = useContext(UserContext);
     const [movies, setMovies] = useState([]);
-    const [user, setUser] = useState(null);
     const [menuVisible, setMenuVisible] = useState(false);
     const slideAnim = useState(new Animated.Value(-300))[0]; // Menu trượt từ phải vào
     const [upcomingMovies, setUpcomingMovies] = useState([]);
@@ -24,26 +24,6 @@ const HomeScreen = ({ navigation }) => {
     const [isModalVisible, setIsModalVisible] = useState(false); // Hiển thị modal tìm kiếm
     const [refreshTrigger, setRefreshTrigger] = useState(0); // Trigger để refresh ticket count
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const userData = await AsyncStorage.getItem("user");
-                if (userData) {
-                    const parsedUser = JSON.parse(userData);
-                    console.log('HomeScreen: User loaded from AsyncStorage:', parsedUser);
-                    setUser(parsedUser);
-                } else {
-                    console.log('HomeScreen: No user data in AsyncStorage');
-                    setUser(null);
-                }
-            } catch (error) {
-                console.error('HomeScreen: Error loading user:', error);
-                setUser(null);
-            }
-        };
-        fetchUser();
-
-    }, []);
 
     // Listen for navigation focus để refresh ticket count
     useEffect(() => {
@@ -111,7 +91,7 @@ const HomeScreen = ({ navigation }) => {
     };
 
     const handleLogout = async () => {
-        await AsyncStorage.removeItem("user"); // Xoá thông tin tài khoản
+        setUser(null); // Xoá thông tin tài khoản từ UserContext
         navigation.replace("Home"); // Chuyển về màn hình đăng nhập
     };
 

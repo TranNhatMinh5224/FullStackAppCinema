@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from "react-native";
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import axios from "axios"; // ✅ Thêm axios để gọi API
 import { StatusBar } from "expo-status-bar";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { checkout } from "../service/APIservice";
 import Header from "../components/Header"; // Import Header component
 
@@ -11,12 +10,14 @@ import MovieInfoCard from "../components/MovieInfoCard";
 import InfoRow from "../components/InfoRow";
 import COLORS from "../assets/color";
 import { deleteSeat } from '../service/APIservice'; // Import deleteSeat function
+import { UserContext } from '../context/UserContext';
 
 
 
 
 const CheckoutScreen = ({ route, navigation }) => {
     const { movie, selectedDay, selectedTime, selectedSeats, selectedSeatIds, showtimeId, price } = route.params;
+    const { user } = useContext(UserContext);
     const [loading, setLoading] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState('payos'); // 'momo' or 'payos'
 
@@ -38,14 +39,17 @@ const CheckoutScreen = ({ route, navigation }) => {
 
         // Xử lý thanh toán MOMO (code cũ)
         setLoading(true);
-        const userData = await AsyncStorage.getItem("user");
-        const user = JSON.parse(userData)
+        if (!user) {
+            Alert.alert("Lỗi", "Vui lòng đăng nhập để thanh toán");
+            setLoading(false);
+            return;
+        }
 
         try {
             const data = {
                 suat_chieu_id: showtimeId,
                 ghe_ids: selectedSeatIds,
-                user_id: parseInt(user.id),
+                user_id: user ? parseInt(user.id) : null,
                 phuong_thuc_thanh_toan: "MOMO",
                 tong_gia: parseFloat(price),
             };
@@ -88,14 +92,12 @@ const CheckoutScreen = ({ route, navigation }) => {
 
     const backDelete = async () => {
         try {
-            const userData = await AsyncStorage.getItem("user");
-            if (!userData) {
+            if (!user) {
                 console.warn("No user data found, cannot delete seats");
                 navigation.goBack();
                 return;
             }
 
-            const user = JSON.parse(userData);
             if (!user || !user.id) {
                 console.warn("Invalid user data, cannot delete seats");
                 navigation.goBack();
@@ -105,7 +107,7 @@ const CheckoutScreen = ({ route, navigation }) => {
             const data = {
                 suat_chieu_id: showtimeId,
                 ghe_ids: selectedSeatIds,
-                user_id: parseInt(user.id),
+                user_id: user ? parseInt(user.id) : null,
             };
 
             console.log(data);

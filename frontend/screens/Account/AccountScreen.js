@@ -1,17 +1,18 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useContext } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import AccountAvatar from '../../components/account/AccountAvatar';
 import AccountListItem from '../../components/account/AccountListItem';
 import Separator from '../../components/account/Separator';
 import Header from '../../components/Header';
+import { UserContext } from '../../context/UserContext';
 
 
 const AccountScreen = ({ route, navigation }) => {
     const { user } = route.params;
+    const { setUser } = useContext(UserContext);
 
     const handleLogout = async () => {
-        await AsyncStorage.removeItem("user");
+        await setUser(null); // Sử dụng UserContext để đăng xuất
         navigation.replace("Home");
     };
 

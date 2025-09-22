@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { changePassword } from '../../service/authService';
 import COLORS from '../../assets/color';
 import Header from '../../components/Header';
+import { UserContext } from '../../context/UserContext';
 
 
 
 const ChangePassword = ({ route, navigation }) => {
     const { user } = route.params;
+    const { setUser } = useContext(UserContext);
 
     const [showPassword, setShowPassword] = useState({
         old: true,
@@ -31,7 +32,7 @@ const ChangePassword = ({ route, navigation }) => {
     };
 
     const handleLogout = async () => {
-        await AsyncStorage.removeItem("user");
+        await setUser(null); // Sử dụng UserContext để đăng xuất
         navigation.replace("Home");
     };
 
@@ -48,12 +49,12 @@ const ChangePassword = ({ route, navigation }) => {
 
         try {
             console.log(form);
-            console.log(user.id);
+            console.log(user?.id);
 
 
 
             // Gửi request PUT với header và dữ liệu JSON
-            const response = await changePassword(user.id, form);
+            const response = await changePassword(user?.id, form);
 
             // Hiển thị phản hồi nếu thành công
             console.log(response);

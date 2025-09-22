@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
     View,
     Text,
@@ -9,16 +9,17 @@ import {
     Alert,
 } from "react-native";
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { login } from '../service/authService';
 import Header from "../components/Header";
 import LoginForm from "../components/account/LoginForm";
 import { validateEmail } from "../utils/validation";
+import { UserContext } from "../context/UserContext";
 
 const API_URL = "http://10.0.2.2:8000/account/login";
 
 const LoginScreen = ({ navigation }) => {
+    const { setUser } = useContext(UserContext);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -62,7 +63,8 @@ const LoginScreen = ({ navigation }) => {
 
             setLoading(false);
             if (response.message === "Đăng nhập thành công!") {
-                await AsyncStorage.setItem("user", JSON.stringify(response.user));
+                // Cập nhật UserContext
+                await setUser(response.user);
                 Alert.alert("Thành công", "Đăng nhập thành công!");
                 navigation.navigate("Home");
             } else {

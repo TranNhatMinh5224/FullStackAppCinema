@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import { View, Linking } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -21,18 +21,19 @@ import AccountGiftScreen from './screens/Account/AccountGiftScreen';
 import PayOSPaymentScreen from './screens/PayOSPaymentScreen';
 import PaymentSuccessScreen from './screens/PaymentSuccessScreen';
 import PaymentFailScreen from './screens/PaymentFailScreen';
-import { UserProvider } from './context/UserContext';
+import { UserProvider, UserContext } from './context/UserContext';
 import { useFonts } from 'expo-font';
 
 const Stack = createStackNavigator();
 
-const App = () => {
+const AppContent = () => {
   const [fontsLoaded] = useFonts({
     'Roboto': require('./assets/fonts/Roboto/static/Roboto-Regular.ttf'),
     'Roboto-Bold': require('./assets/fonts/Roboto/static/Roboto-Bold.ttf'),
     'Roboto-Italic': require('./assets/fonts/Roboto/static/Roboto-Italic.ttf'),
   });
 
+  const { isLoading: userLoading } = useContext(UserContext);
   const [appIsReady, setAppIsReady] = useState(false);
   const [navigationRef, setNavigationRef] = useState(null);
 
@@ -77,28 +78,13 @@ const App = () => {
           const movieName = params.get('movieName');
           
           console.log('Navigating to PaymentSuccess:', { ma_giao_dich, amount, movieName });
-          console.log('navigationRef available:', !!navigationRef);
           
           if (navigationRef) {
-            console.log('Calling navigationRef.navigate...');
             navigationRef.navigate('PaymentSuccess', {
               ma_giao_dich,
               amount: amount ? parseInt(amount) : 0,
               movieName: movieName || 'Phim không xác định'
             });
-            console.log('Navigation called successfully');
-          } else {
-            console.log('navigationRef not available yet, retrying in 1 second...');
-            setTimeout(() => {
-              if (navigationRef) {
-                console.log('Retry: Calling navigationRef.navigate...');
-                navigationRef.navigate('PaymentSuccess', {
-                  ma_giao_dich,
-                  amount: amount ? parseInt(amount) : 0,
-                  movieName: movieName || 'Phim không xác định'
-                });
-              }
-            }, 1000);
           }
         } catch (error) {
           console.error('Error parsing PaymentSuccess URL:', error);
@@ -140,36 +126,42 @@ const App = () => {
     }
   }, [fontsLoaded, appIsReady]);
 
-  if (!fontsLoaded || !appIsReady) {
+  if (!fontsLoaded || !appIsReady || userLoading) {
     return null; // Hiển thị màn hình Splash cho đến khi app sẵn sàng
   }
 
   return (
+    <NavigationContainer ref={setNavigationRef}>
+      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        <Stack.Navigator initialRouteName="Home" screenOptions={{}}>
+          <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ForgetPassword" component={ForgetPasswordScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="MovieDetail" component={MovieDetailScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Account" component={AccountScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AccountInfo" component={AccountInfoScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="SelectSeat" component={SelectSeatScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="PurchasedTicket" component={PurchasedTicketScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="TicketDetail" component={TicketDetailScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AccountMember" component={AccountMemberScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AccountPoint" component={AccountPointScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AccountGift" component={AccountGiftScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="PayOSPayment" component={PayOSPaymentScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="PaymentFail" component={PaymentFailScreen} options={{ headerShown: false }} />
+        </Stack.Navigator>
+      </View>
+    </NavigationContainer>
+  );
+};
+
+const App = () => {
+  return (
     <UserProvider>
-      <NavigationContainer ref={setNavigationRef}>
-        <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-          <Stack.Navigator initialRouteName="Home" screenOptions={{}}>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="ForgetPassword" component={ForgetPasswordScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="MovieDetail" component={MovieDetailScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Account" component={AccountScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="AccountInfo" component={AccountInfoScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="SelectSeat" component={SelectSeatScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="PurchasedTicket" component={PurchasedTicketScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="TicketDetail" component={TicketDetailScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="AccountMember" component={AccountMemberScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="AccountPoint" component={AccountPointScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="AccountGift" component={AccountGiftScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="PayOSPayment" component={PayOSPaymentScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="PaymentFail" component={PaymentFailScreen} options={{ headerShown: false }} />
-          </Stack.Navigator>
-        </View>
-      </NavigationContainer>
+      <AppContent />
     </UserProvider>
   );
 };

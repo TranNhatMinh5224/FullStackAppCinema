@@ -1,26 +1,26 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated, Image, StatusBar } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome5";
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert } from "react-native";
 import { getSeat, postSeat } from "../service/APIservice";
 import COLORS from "../assets/color";
 import Header from "../components/Header";
 import { ActivityIndicator } from "react-native";
 import wsService from '../service/WebSocketService';
+import { UserContext } from "../context/UserContext";
 
 
 
 
 const SelectSeat = ({ route, navigation }) => {
     const { movie, selectedDay, selectedTime, showtimeId } = route.params;
+    const { user } = useContext(UserContext);
     const [selectedSeats, setSelectedSeats] = useState([]);
     const [seatData, setSeatData] = useState([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const slideAnim = useRef(new Animated.Value(0)).current; // Animation value for sliding
     const [isLoading, setIsLoading] = useState(true);
-    const [userId, setUserId] = useState(null);
 
     const [timeLeft, setTimeLeft] = useState(300); // 5 phút = 300 giây
     
@@ -33,11 +33,8 @@ const SelectSeat = ({ route, navigation }) => {
     
     useEffect(() => {
         if (timeLeft <= 0) {
-            // Hết giờ thì quay về màn hình chính
-            navigation.reset({
-                index: 0,
-                routes: [{ name: "Home" }], // tên màn hình chính trong stack navigator của bạn
-            });
+            // Hết giờ thì quay về màn hình chọn lịch (MovieDetail)
+            navigation.goBack();
             return;
         }
         const timer = setInterval(() => {
@@ -70,27 +67,20 @@ const SelectSeat = ({ route, navigation }) => {
             }
         };
 
-        const getUser = async () => {
-            try {
-                const userData = await AsyncStorage.getItem("user");
-                const user = JSON.parse(userData);
-                setUserId(user.id);
-            } catch (error) {
-                console.error("Lỗi lấy user:", error);
-            }
-        };
+        // Không cần getUser nữa vì đã có user từ UserContext
 
         fetchSeatData();
-        getUser();
 
 
     }, []);
 
     useEffect(() => {
-        if (!userId || !showtimeId) return;
+        if (!user || !showtimeId) return;
 
         // Connect WebSocket
-        wsService.connect(showtimeId, userId);
+        if (user && user.id) {
+            wsService.connect(showtimeId, user.id);
+        }
 
         const handleMessage = (msg) => {
             console.log('WebSocket message:', msg);
@@ -101,7 +91,7 @@ const SelectSeat = ({ route, navigation }) => {
                     seat.id == seatId ? { ...seat, trang_thai: 'dang_giu', owner: msg.userId } : seat
                 ));
                 // Nếu ghế này đang được chọn bởi user khác, bỏ chọn local
-                if (String(msg.userId) !== String(userId)) {
+                if (user && String(msg.userId) !== String(user.id)) {
                     setSelectedSeats(prev => prev.filter(s => {
                         const seatInfo = seatData.find(se => se.so_ghe === s);
                         return seatInfo && seatInfo.id != seatId;
@@ -130,7 +120,7 @@ const SelectSeat = ({ route, navigation }) => {
             wsService.removeListener(handleMessage);
             wsService.disconnect();
         };
-    }, [userId, showtimeId]);
+    }, [user, showtimeId]);
 
     const toggleSeat = (seat) => {
         // Find the seat data
@@ -138,7 +128,7 @@ const SelectSeat = ({ route, navigation }) => {
 
         // If seat is already sold, don't allow selection
         if (seatInfo && seatInfo.trang_thai === "da_ban") return;
-        if (seatInfo && seatInfo.trang_thai === "dang_giu" && String(seatInfo.owner) !== String(userId)) return; // Nếu đang giữ bởi user khác
+        if (seatInfo && seatInfo.trang_thai === "dang_giu" && user && String(seatInfo.owner) !== String(user.id)) return; // Nếu đang giữ bởi user khác
         if (!selectedSeats.includes(seat) && selectedSeats.length >= 5) {
             Alert.alert("Giới hạn", "Bạn chỉ được chọn tối đa 5 ghế.");
             return;
@@ -194,12 +184,14 @@ const SelectSeat = ({ route, navigation }) => {
     }).filter(id => id !== null); // Loại bỏ các giá trị `null`
 
     const postghe = async (selectedSeatIds, showtimeId) => {
-        const userData = await AsyncStorage.getItem("user");
-        const user = JSON.parse(userData)
+        if (!user) {
+            Alert.alert("Lỗi", "Vui lòng đăng nhập để đặt ghế");
+            return;
+        }
         const data = {
             suat_chieu_id: showtimeId,
             ghe_ids: selectedSeatIds,
-            user_id: parseInt(user.id),
+            user_id: user ? parseInt(user.id) : null,
 
         };
         console.log(data)
@@ -267,7 +259,7 @@ const SelectSeat = ({ route, navigation }) => {
                                             styles.regularSeat,
                             ]}
                             onPress={() => toggleSeat(seat)}
-                            disabled={!!isOccupied || (!!isHolding && String(seatInfo.owner) !== String(userId))}
+                            disabled={!!isOccupied || (!!isHolding && user && String(seatInfo.owner) !== String(user.id))}
                         >
 
                             <Text style={[
@@ -281,6 +273,19 @@ const SelectSeat = ({ route, navigation }) => {
             </View>
         ));
     };
+    
+    // Kiểm tra user đã đăng nhập chưa (sau khi tất cả hooks đã được gọi)
+    if (!user) {
+        return (
+            <View style={styles.container}>
+                <Header navigation={navigation} title="Chọn ghế" />
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>Vui lòng đăng nhập để chọn ghế</Text>
+                </View>
+            </View>
+        );
+    }
+    
     if (isLoading) {
         return (
             <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white" }}>
@@ -675,6 +680,18 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 20,
         padding: 20,
         elevation: 5,
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    errorText: {
+        fontSize: 18,
+        color: '#E74C3C',
+        textAlign: 'center',
+        fontWeight: 'bold',
     },
 });
 
