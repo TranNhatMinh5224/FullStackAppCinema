@@ -62,7 +62,15 @@ const CheckoutScreen = ({ route, navigation }) => {
         } catch (error) {
             setLoading(false);
             console.log("Lỗi thanh toán:", error);
-            Alert.alert("Đặt vé không thành công", response.trang_thai, [
+            let errorMessage = "Đặt vé không thành công. Vui lòng thử lại.";
+            if (error.response && error.response.data) {
+                if (error.response.data.detail) {
+                    errorMessage = error.response.data.detail;
+                } else if (error.response.data.trang_thai) {
+                    errorMessage = error.response.data.trang_thai;
+                }
+            }
+            Alert.alert("Đặt vé không thành công", errorMessage, [
                 { text: "OK", onPress: () => navigation.navigate("Home") },
             ]);
         }

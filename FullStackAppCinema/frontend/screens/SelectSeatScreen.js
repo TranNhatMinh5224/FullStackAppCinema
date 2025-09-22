@@ -8,6 +8,7 @@ import { getSeat, postSeat } from "../service/APIservice";
 import COLORS from "../assets/color";
 import Header from "../components/Header";
 import { ActivityIndicator } from "react-native";
+import wsService from '../service/WebSocketService';
 
 
 
@@ -19,6 +20,7 @@ const SelectSeat = ({ route, navigation }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const slideAnim = useRef(new Animated.Value(0)).current; // Animation value for sliding
     const [isLoading, setIsLoading] = useState(true);
+    const [userId, setUserId] = useState(null);
 
     const [timeLeft, setTimeLeft] = useState(300); // 5 phút = 300 giây
     
@@ -68,10 +70,67 @@ const SelectSeat = ({ route, navigation }) => {
             }
         };
 
+        const getUser = async () => {
+            try {
+                const userData = await AsyncStorage.getItem("user");
+                const user = JSON.parse(userData);
+                setUserId(user.id);
+            } catch (error) {
+                console.error("Lỗi lấy user:", error);
+            }
+        };
+
         fetchSeatData();
+        getUser();
 
 
     }, []);
+
+    useEffect(() => {
+        if (!userId || !showtimeId) return;
+
+        // Connect WebSocket
+        wsService.connect(showtimeId, userId);
+
+        const handleMessage = (msg) => {
+            console.log('WebSocket message:', msg);
+            const type = msg.type;
+            if (type === 'locked') {
+                const seatId = msg.seatId;
+                setSeatData(prev => prev.map(seat => 
+                    seat.id == seatId ? { ...seat, trang_thai: 'dang_giu', owner: msg.userId } : seat
+                ));
+                // Nếu ghế này đang được chọn bởi user khác, bỏ chọn local
+                if (String(msg.userId) !== String(userId)) {
+                    setSelectedSeats(prev => prev.filter(s => {
+                        const seatInfo = seatData.find(se => se.so_ghe === s);
+                        return seatInfo && seatInfo.id != seatId;
+                    }));
+                }
+            } else if (type === 'available') {
+                const seatId = msg.seatId;
+                setSeatData(prev => prev.map(seat => 
+                    seat.id == seatId ? { ...seat, trang_thai: 'available', owner: null } : seat
+                ));
+            } else if (type === 'reserved') {
+                const seatId = msg.seatId;
+                setSeatData(prev => prev.map(seat => 
+                    seat.id == seatId ? { ...seat, trang_thai: 'da_ban', owner: msg.userId } : seat
+                ));
+                setSelectedSeats(prev => prev.filter(s => {
+                    const seatInfo = seatData.find(se => se.so_ghe === s);
+                    return seatInfo && seatInfo.id != seatId;
+                }));
+            }
+        };
+
+        wsService.addListener(handleMessage);
+
+        return () => {
+            wsService.removeListener(handleMessage);
+            wsService.disconnect();
+        };
+    }, [userId, showtimeId]);
 
     const toggleSeat = (seat) => {
         // Find the seat data
@@ -79,22 +138,24 @@ const SelectSeat = ({ route, navigation }) => {
 
         // If seat is already sold, don't allow selection
         if (seatInfo && seatInfo.trang_thai === "da_ban") return;
-        if (seatInfo && seatInfo.trang_thai === "dang_giu") return;
+        if (seatInfo && seatInfo.trang_thai === "dang_giu" && String(seatInfo.owner) !== String(userId)) return; // Nếu đang giữ bởi user khác
         if (!selectedSeats.includes(seat) && selectedSeats.length >= 5) {
             Alert.alert("Giới hạn", "Bạn chỉ được chọn tối đa 5 ghế.");
             return;
         }
 
-        let updatedSeats;
         if (selectedSeats.includes(seat)) {
-            updatedSeats = selectedSeats.filter((s) => s !== seat);
+            // Unlock
+            wsService.unlock(seatInfo.id);
+            setSelectedSeats(prev => prev.filter(s => s !== seat));
         } else {
-            updatedSeats = [...selectedSeats, seat];
+            // Lock
+            wsService.lock(seatInfo.id);
+            setSelectedSeats(prev => [...prev, seat]);
         }
-        setSelectedSeats(updatedSeats);
-
 
         // Show modal if there are selected seats
+        const updatedSeats = selectedSeats.includes(seat) ? selectedSeats.filter(s => s !== seat) : [...selectedSeats, seat];
         if (updatedSeats.length > 0 && !isModalVisible) {
             setIsModalVisible(true);
             slideInModal();
@@ -206,7 +267,7 @@ const SelectSeat = ({ route, navigation }) => {
                                             styles.regularSeat,
                             ]}
                             onPress={() => toggleSeat(seat)}
-                            disabled={isOccupied}
+                            disabled={isOccupied || (isHolding && String(seatInfo.owner) !== String(userId))}
                         >
 
                             <Text style={[

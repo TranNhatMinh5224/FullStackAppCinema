@@ -1,6 +1,23 @@
-import aioredis  #aioredis là 1 thư viện hỗ trợ connect bất đồng bộ (async)
+import os
+import asyncio
+
+# Thử import redis async modern, fallback về aioredis nếu cần
+try:
+    import redis.asyncio as redis_async
+except Exception:
+    import aioredis as redis_async
+
+_redis = None
+
 async def get_redis():
-   redis = await aioredis.from_url("redis://localhost", decode_responses=True)
-   return redis 
-#  kết nối nối qua tên miền nội bộ , redis://127.0.0.1:6379  kết nối trực tiếp qua IPV4 . Hệ điều hành tự động phân giải (DNS nội bộ)
-# - Có thể trỏ tới cả 127.0.0.1 hoặc IPv6 ::1 
+    """Return a singleton async Redis client. Handles both redis.asyncio and aioredis APIs."""
+    global _redis
+    if _redis is None:
+        url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        # from_url có thể là coroutine trong một số phiên bản aioredis
+        client = redis_async.from_url(url, decode_responses=True)
+        if asyncio.iscoroutine(client):
+            _redis = await client
+        else:
+            _redis = client
+    return _redis
