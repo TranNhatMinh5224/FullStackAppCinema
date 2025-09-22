@@ -121,6 +121,18 @@ const SelectSeat = ({ route, navigation }) => {
                     const seatInfo = seatData.find(se => se.so_ghe === s);
                     return seatInfo && seatInfo.id != seatId;
                 }));
+            } else if (type === 'selecting') {
+                // Ghế đang được chọn bởi user khác
+                const seatId = msg.seatId;
+                setSeatData(prev => prev.map(seat => 
+                    seat.id == seatId ? { ...seat, trang_thai: 'dang_chon', owner: msg.userId } : seat
+                ));
+            } else if (type === 'deselected') {
+                // Ghế được bỏ chọn
+                const seatId = msg.seatId;
+                setSeatData(prev => prev.map(seat => 
+                    seat.id == seatId ? { ...seat, trang_thai: 'available', owner: null } : seat
+                ));
             }
         };
 
@@ -139,18 +151,21 @@ const SelectSeat = ({ route, navigation }) => {
         // If seat is already sold, don't allow selection
         if (seatInfo && seatInfo.trang_thai === "da_ban") return;
         if (seatInfo && seatInfo.trang_thai === "dang_giu" && String(seatInfo.owner) !== String(userId)) return; // Nếu đang giữ bởi user khác
+        if (seatInfo && seatInfo.trang_thai === "dang_chon" && String(seatInfo.owner) !== String(userId)) return; // Nếu đang chọn bởi user khác
+        
+        // Kiểm tra giới hạn số ghế
         if (!selectedSeats.includes(seat) && selectedSeats.length >= 5) {
             Alert.alert("Giới hạn", "Bạn chỉ được chọn tối đa 5 ghế.");
             return;
         }
 
         if (selectedSeats.includes(seat)) {
-            // Unlock
-            wsService.unlock(seatInfo.id);
+            // Bỏ chọn ghế: gửi deselect message
+            wsService.deselect(seatInfo.id);
             setSelectedSeats(prev => prev.filter(s => s !== seat));
         } else {
-            // Lock
-            wsService.lock(seatInfo.id);
+            // Chọn ghế: gửi select message để broadcast trạng thái selecting
+            wsService.select(seatInfo.id);
             setSelectedSeats(prev => [...prev, seat]);
         }
 
@@ -254,6 +269,7 @@ const SelectSeat = ({ route, navigation }) => {
                     const isSelected = selectedSeats.includes(seat);
                     const isOccupied = seatStatus === "da_ban";
                     const isHolding = seatStatus === "dang_giu"; // Ghế đang giữ
+                    const isSelecting = seatStatus === "dang_chon"; // Ghế đang được chọn
                     const isVIP = seatType === "VIP";
 
                     return (
@@ -264,10 +280,11 @@ const SelectSeat = ({ route, navigation }) => {
                                 isOccupied ? styles.occupiedSeat :
                                     isSelected ? styles.selectedSeat :
                                         isHolding ? styles.isHolding :
-                                            styles.regularSeat,
+                                            isSelecting ? styles.isSelecting : // Thêm style cho ghế đang chọn
+                                                styles.regularSeat,
                             ]}
                             onPress={() => toggleSeat(seat)}
-                            disabled={isOccupied || (isHolding && String(seatInfo.owner) !== String(userId))}
+                            disabled={isOccupied || (isHolding && String(seatInfo.owner) !== String(userId)) || (isSelecting && String(seatInfo.owner) !== String(userId))}
                         >
 
                             <Text style={[
@@ -370,9 +387,19 @@ const SelectSeat = ({ route, navigation }) => {
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.bookButton}
-                            onPress={() => {
+                            onPress={async () => {
                                 slideOutModal();
-                                postghe(selectedSeatIds, showtimeId);
+                                
+                                // Lock tất cả ghế đã chọn vào Redis trước khi navigate
+                                try {
+                                    await postghe(selectedSeatIds, showtimeId);
+                                    console.log("Đã lock ghế thành công");
+                                } catch (error) {
+                                    console.error("Lỗi khi lock ghế:", error);
+                                    Alert.alert("Lỗi", "Không thể đặt ghế. Vui lòng thử lại.");
+                                    return; // Không navigate nếu lock thất bại
+                                }
+                                
                                 navigation.navigate("Checkout", {
                                     movie: movie,
                                     selectedDay: selectedDay,
@@ -476,6 +503,9 @@ const styles = StyleSheet.create({
     },
     isHolding: {
         backgroundColor: COLORS.ghe_dang_giu,
+    },
+    isSelecting: {
+        backgroundColor: COLORS.ghe_dang_chon, // Màu cho ghế đang được chọn
     },
     seatText: {
         fontSize: 12,

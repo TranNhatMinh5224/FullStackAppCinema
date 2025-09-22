@@ -85,6 +85,14 @@ class WebSocketService {
     this.send({ type: 'extend', seatId, userId: this.userId, extra });
   }
 
+  select(seatId) {
+    this.send({ type: 'select', seatId, userId: this.userId });
+  }
+
+  deselect(seatId) {
+    this.send({ type: 'deselect', seatId, userId: this.userId });
+  }
+
   confirm(gheIds, phuong_thuc = 'WS', tong_gia = null) {
     const payload = { type: 'confirm', gheIds, userId: this.userId, phuong_thuc };
     if (tong_gia !== null) payload.tong_gia = tong_gia;

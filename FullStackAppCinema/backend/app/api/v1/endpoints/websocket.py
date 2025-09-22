@@ -180,6 +180,18 @@ async def seat_ws(websocket: WebSocket, schedule_id: str, token: str = None):
                 else:
                     await websocket.send_text(json.dumps({"status": "fail", "reason": "not_owner_or_missing"}))
 
+            elif typ == "select":
+                # Chỉ broadcast selecting status, không lock Redis
+                payload = {"type": "selecting", "seatId": seat_id, "userId": user_id, "scheduleId": schedule_id}
+                await redis.publish(channel, json.dumps(payload))
+                await websocket.send_text(json.dumps({"status": "ok", "action": "selecting", "seatId": seat_id}))
+
+            elif typ == "deselect":
+                # Broadcast deselected status
+                payload = {"type": "deselected", "seatId": seat_id, "userId": user_id, "scheduleId": schedule_id}
+                await redis.publish(channel, json.dumps(payload))
+                await websocket.send_text(json.dumps({"status": "ok", "action": "deselected", "seatId": seat_id}))
+
             elif typ == "confirm":
                 ghe_ids = msg.get("gheIds") or ([seat_id] if seat_id else [])
                 if not ghe_ids:

@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.models import SuatChieu ,Ghe 
 from sqlalchemy.future import select
 from app.redis.redis import redis_manager
+from app.core.redis_connection import get_redis
+import json
 
 async def select_seats(suat_chieu_id: int, ghe_ids: list, user_id: int, db: AsyncSession):
     # Kiểm tra suất chiếu có tồn tại không
@@ -13,6 +15,8 @@ async def select_seats(suat_chieu_id: int, ghe_ids: list, user_id: int, db: Asyn
         raise HTTPException(status_code=404, detail="Suất chiếu không tồn tại")
 
     selected_seats = []
+    redis = await get_redis()
+    
     for ghe_id in ghe_ids:
         # Kiểm tra ghế có hợp lệ và thuộc phòng chiếu của suất chiếu không
         result = await db.execute(

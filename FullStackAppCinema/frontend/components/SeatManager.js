@@ -28,6 +28,14 @@ export default function SeatManager({ seats: initialSeats = [], scheduleId, user
       } else if (type === 'available' || msg.type === 'available') {
         const id = String(msg.seatId || msg.gheId);
         setSeats(prev => prev.map(s => s.id == id ? { ...s, state: 'available', owner: null } : s));
+      } else if (type === 'selecting' || msg.type === 'selecting') {
+        const id = String(msg.seatId || msg.gheId);
+        setSeats(prev => prev.map(s => s.id == id ? { ...s, state: 'dang_chon', owner: msg.userId } : s));
+        // if someone else is selecting a seat we should deselect it locally
+        setSelected(prev => prev.filter(x => String(x) !== String(id)));
+      } else if (type === 'deselected' || msg.type === 'deselected') {
+        const id = String(msg.seatId || msg.gheId);
+        setSeats(prev => prev.map(s => s.id == id ? { ...s, state: 'available', owner: null } : s));
       } else if (type === 'reserved' || msg.type === 'reserved') {
         const id = String(msg.seatId || msg.gheId);
         setSeats(prev => prev.map(s => s.id == id ? { ...s, state: 'da_ban', owner: msg.userId } : s));
@@ -37,6 +45,13 @@ export default function SeatManager({ seats: initialSeats = [], scheduleId, user
         const id = String(msg.seatId);
         setSeats(prev => prev.map(s => s.id == id ? { ...s, state: 'dang_giu', owner: userId } : s));
       } else if (msg.status === 'ok' && msg.action === 'unlocked') {
+        const id = String(msg.seatId);
+        setSeats(prev => prev.map(s => s.id == id ? { ...s, state: 'available', owner: null } : s));
+      } else if (msg.status === 'ok' && msg.action === 'selecting') {
+        // ack for our select
+        const id = String(msg.seatId);
+        setSeats(prev => prev.map(s => s.id == id ? { ...s, state: 'dang_chon', owner: userId } : s));
+      } else if (msg.status === 'ok' && msg.action === 'deselected') {
         const id = String(msg.seatId);
         setSeats(prev => prev.map(s => s.id == id ? { ...s, state: 'available', owner: null } : s));
       } else if (msg.status === 'ok' && msg.action === 'reserved') {

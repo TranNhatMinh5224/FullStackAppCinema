@@ -3,6 +3,7 @@ const COLORS = {
     ghe_dang_dat: '#19699f',
     ghe_bi_chiem: '#fd2803',
     ghe_dang_giu: '#f7c600',
+    ghe_dang_chon: '#ffff00', // Màu vàng cho ghế đang được chọn
     ghe_trong: '#babbc3',
     text: ' #333333',
     white: '#ffffff',
