@@ -74,10 +74,10 @@ const NavBar = ({ user, refreshTrigger }) => {
     // Xử lý khi refreshTrigger thay đổi (chỉ khi user tồn tại)
     useEffect(() => {
         console.log('Navbar refreshTrigger useEffect triggered:', refreshTrigger);
-        if (user && refreshTrigger > 0) {
+        if (user && user.id && refreshTrigger > 0) {
             fetchTickets();
         }
-    }, [refreshTrigger]);
+    }, [refreshTrigger, user]);
 
     const handleUserPress = () => {
         if (user) {

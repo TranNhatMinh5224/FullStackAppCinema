@@ -28,11 +28,21 @@ const HomeScreen = ({ navigation }) => {
     // Listen for navigation focus để refresh ticket count
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
-            setRefreshTrigger(prev => prev + 1);
+            // Chỉ refresh khi user đã đăng nhập và chưa refresh gần đây
+            if (user) {
+                setRefreshTrigger(prev => prev + 1);
+            }
         });
 
         return unsubscribe;
-    }, [navigation]);
+    }, [navigation, user]);
+
+    // Reset refreshTrigger khi user thay đổi
+    useEffect(() => {
+        if (!user) {
+            setRefreshTrigger(0);
+        }
+    }, [user]);
 
 
 

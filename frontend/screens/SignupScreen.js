@@ -117,8 +117,15 @@ const SignupScreen = ({ navigation }) => {
             console.log(response);
 
             setLoading(false);
-            Alert.alert("Thành công", "Đăng ký thành công!");
-            navigation.navigate("Login");
+            Alert.alert("Thành công", "Đăng ký thành công!", [
+                {
+                    text: "OK",
+                    onPress: () => navigation.reset({
+                        index: 0,
+                        routes: [{ name: "Login" }]
+                    })
+                }
+            ]);
         } catch (error) {
             setLoading(false);
             console.error(error);
@@ -126,12 +133,17 @@ const SignupScreen = ({ navigation }) => {
         }
     };
 
+    const handleBack = () => {
+        navigation.navigate("Home");
+    };
+
     return (
         <SafeAreaView style={styles.safeContainer}>
             <KeyboardAvoidingView 
                 style={styles.keyboardContainer}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                enableOnAndroid={true}
             >
                 <ScrollView
                     style={styles.scrollView}
@@ -139,7 +151,7 @@ const SignupScreen = ({ navigation }) => {
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-                    <Header title="Đăng ký" navigation={navigation} />
+                    <Header title="Đăng ký" navigation={navigation} onBack={handleBack} />
                     <Image source={require("../assets/img/banner.png")} style={styles.imageRegister} />
                     <View style={styles.container}>
                         <InputField 
@@ -238,7 +250,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#F8F9FA'
     },
     scrollContainer: {
-        alignItems: "center"
+        alignItems: "center",
+        flexGrow: 1
     },
     container: {
         width: "90%",

@@ -82,9 +82,13 @@ const LoginScreen = ({ navigation }) => {
     };
 
 
+    const handleBack = () => {
+        navigation.navigate("Home");
+    };
+
     return (
         <View style={styles.container}>
-            <Header navigation={navigation} title="Đăng nhập" />
+            <Header navigation={navigation} title="Đăng nhập" onBack={handleBack} />
 
             <Image source={require("../assets/img/banner.png")} style={styles.banner} />
 
