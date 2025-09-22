@@ -1,0 +1,6 @@
+framework module CallAppSDK {
+  umbrella header "CallAppSDK.h"
+
+  export *
+  module * { export * }
+}
