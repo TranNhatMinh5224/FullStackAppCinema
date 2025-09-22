@@ -3,8 +3,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 
-from .api.v1.endpoints import ( websocket ,Account ,Booking ,film ,FilmSearch ,historyfilm ,MovieCommetntary ,
+from .api.v1.endpoints import ( websocket ,Booking ,film ,FilmSearch ,historyfilm ,MovieCommetntary ,
                                                Schedule ,ShowTime  , ChairList, ChooseChair,payment  ,CommentFilm , historypayment  , UpdateChair, payos, DetailVe)
+from .api.v1.endpoints.Account import router as account_router
 
 
 
@@ -19,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(websocket.router)
-app.include_router(Account.router)
+app.include_router(account_router)
 app.include_router(film.router)
 app.include_router(Booking.router)
 app.include_router(Schedule.router)

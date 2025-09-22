@@ -62,7 +62,6 @@ class ForgotPassword(BaseModel):
 # Schema phản hồi quên mật khẩu
 class ForgotPasswordResponse(BaseModel):
     message: str
-    mat_khau:str
     class Config:
         from_attributes = True
 
@@ -76,6 +75,24 @@ class ChangePasswordResponse(BaseModel):
     message: str
     class Config:
         from_attributes = True
+
+# Schema xác minh OTP
+class VerifyOTP(BaseModel):
+    email: str
+    otp: str
+
+# Schema phản hồi xác minh OTP
+class VerifyOTPResponse(BaseModel):
+    message: str
+
+# Schema đặt lại mật khẩu
+class ResetPassword(BaseModel):
+    email: str
+    new_password: str
+
+# Schema phản hồi đặt lại mật khẩu
+class ResetPasswordResponse(BaseModel):
+    message: str
 
 
 class HistoryFilm(BaseModel): 

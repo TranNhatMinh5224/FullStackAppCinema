@@ -53,6 +53,46 @@ class RedisManager:
                 continue
         return removed
 
+    async def set_otp(self, email: str, otp: str, timeout: int = 300):  # 300 giây = 5 phút
+        key = f"otp:{email}"
+        await self.redis.setex(key, timeout, otp)
+
+    async def get_otp(self, email: str):
+        key = f"otp:{email}"
+        return await self.redis.get(key)
+
+    async def delete_otp(self, email: str):
+        key = f"otp:{email}"
+        await self.redis.delete(key)
+
+    async def get_otp_attempts(self, email: str):
+        key = f"otp_attempts:{email}"
+        attempts = await self.redis.get(key)
+        return int(attempts) if attempts else 0
+
+    async def increment_otp_attempts(self, email: str):
+        key = f"otp_attempts:{email}"
+        attempts = await self.redis.incr(key)
+        # Set timeout 15 phút cho counter
+        await self.redis.expire(key, 900)  # 900 giây = 15 phút
+        return attempts
+
+    async def reset_otp_attempts(self, email: str):
+        key = f"otp_attempts:{email}"
+        await self.redis.delete(key)
+
+    async def set_otp_verified(self, email: str, timeout: int = 600):  # 10 phút để đặt lại mật khẩu
+        key = f"otp_verified:{email}"
+        await self.redis.setex(key, timeout, "true")
+
+    async def is_otp_verified(self, email: str):
+        key = f"otp_verified:{email}"
+        return await self.redis.exists(key)
+
+    async def delete_otp_verified(self, email: str):
+        key = f"otp_verified:{email}"
+        await self.redis.delete(key)
+
     async def close(self):
         await self.redis.close()
 

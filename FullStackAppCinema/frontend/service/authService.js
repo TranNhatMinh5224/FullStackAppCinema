@@ -54,6 +54,26 @@ export const forgotPassword = async (email) => {
     }
 };
 
+export const verifyOTP = async (email, otp) => {
+    try {
+        const response = await axios.post(`${API_URL}/verify-otp`, { email, otp });
+        return response.data;
+    } catch (error) {
+        console.log("Lỗi xác minh OTP:", error.response?.data || error.message);
+        throw error;
+    }
+};
+
+export const resetPassword = async (email, newPassword) => {
+    try {
+        const response = await axios.post(`${API_URL}/reset-password`, { email, new_password: newPassword });
+        return response.data;
+    } catch (error) {
+        console.log("Lỗi đặt lại mật khẩu:", error.response?.data || error.message);
+        throw error;
+    }
+};
+
 export const updateUserInfo = async (userId, userData) => {
     try {
         const response = await axios.put(

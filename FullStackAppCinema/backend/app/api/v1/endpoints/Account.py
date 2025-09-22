@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.Account import register_user, login_user, info_user, update_user, forgot_password, change_password
+from app.services.Account import register_user, login_user, info_user, update_user, forgot_password, change_password, verify_otp as verify_otp_func, reset_password, verify_otp_new
 from app.database.Database import get_db
 from app.schemas.schemas import (
     TaiKhoanCreate, TaiKhoanLogin, TaiKhoanUpdate, TaiKhoanResponse,
     ForgotPassword, ChangePassword, RegisterResponse, LoginResponse,
-    ForgotPasswordResponse, ChangePasswordResponse
+    ForgotPasswordResponse, ChangePasswordResponse, VerifyOTP, VerifyOTPResponse,
+    ResetPassword, ResetPasswordResponse
 )
 
 router = APIRouter(prefix="/account", tags=["Account"])
@@ -39,3 +40,26 @@ async def forgot_password_endpoint(request_data: ForgotPassword, db: AsyncSessio
 @router.put("/change-password/{user_id}", response_model=ChangePasswordResponse)
 async def changepassword(user_id: int, change_mk: ChangePassword, db: AsyncSession = Depends(get_db)):
     return await change_password(user_id, change_mk, db)
+
+# Endpoint xác minh OTP
+@router.post("/verify-otp")
+async def verify_otp_endpoint(otp_data: dict):
+    print(f"verify_otp_endpoint called with: {otp_data}")
+    try:
+        result = await verify_otp_func(otp_data['email'], otp_data['otp'])
+        print(f"verify_otp result: {result}")
+        return result
+    except Exception as e:
+        print(f"Error in verify_otp_endpoint: {e}")
+        raise
+
+# Endpoint đặt lại mật khẩu
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+async def reset_password_endpoint(reset_data: ResetPassword, db: AsyncSession = Depends(get_db)):
+    return await reset_password(reset_data.email, reset_data.new_password, db)
+
+# Endpoint test verify
+@router.post("/test-verify")
+async def test_verify_endpoint(data: dict):
+    print(f"test_verify_endpoint called with: {data}")
+    return {"message": "Test verify works"}

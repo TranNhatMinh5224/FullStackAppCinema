@@ -5,8 +5,10 @@ from app.models.models import TaiKhoan
 from app.schemas.schemas import (
     TaiKhoanCreate, TaiKhoanLogin, TaiKhoanResponse,
     TaiKhoanUpdate, ChangePassword, RegisterResponse, LoginResponse,
-    ForgotPasswordResponse, ChangePasswordResponse
+    ForgotPasswordResponse, ChangePasswordResponse, VerifyOTPResponse
 )
+from app.services.email_service import send_and_store_otp
+from app.redis.redis import redis_manager
 
 # Đăng ký người dùng
 async def register_user(user: TaiKhoanCreate, db: AsyncSession):
@@ -120,10 +122,60 @@ async def forgot_password(email: str, db: AsyncSession):
     result = await db.execute(select(TaiKhoan).where(TaiKhoan.email == email))
     user = result.scalars().first()
     if not user:
-        raise HTTPException(status_code=400, detail="Không thấy tài khoản")
+        raise HTTPException(status_code=400, detail="Email không tồn tại trong hệ thống")
     
-    # Giả lập gửi email reset mật khẩu
-    return ForgotPasswordResponse(message="mật khẩu của bạn là : " , mat_khau= user.mat_khau)
+    # Reset counter attempts khi gửi OTP mới
+    await redis_manager.reset_otp_attempts(email)
+    
+    # Gửi OTP và lưu vào Redis
+    await send_and_store_otp(email)
+    return ForgotPasswordResponse(message="OTP đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư.")
+
+# Xác thực OTP
+async def verify_otp(email: str, otp: str):
+    # Kiểm tra số lần thử
+    attempts = await redis_manager.get_otp_attempts(email)
+    if attempts >= 5:
+        raise HTTPException(status_code=429, detail="Quá nhiều lần thử OTP. Vui lòng yêu cầu OTP mới.")
+    
+    # Lấy OTP từ Redis
+    stored_otp = await redis_manager.get_otp(email)
+    if not stored_otp:
+        raise HTTPException(status_code=400, detail="OTP đã hết hạn hoặc không tồn tại")
+    
+    # Kiểm tra OTP
+    if stored_otp != otp:
+        # Tăng counter khi sai
+        await redis_manager.increment_otp_attempts(email)
+        remaining_attempts = 5 - (attempts + 1)
+        raise HTTPException(status_code=400, detail=f"OTP không đúng. Còn {remaining_attempts} lần thử.")
+    
+    # OTP đúng - reset counter và xóa OTP
+    await redis_manager.reset_otp_attempts(email)
+    await redis_manager.delete_otp(email)
+    await redis_manager.set_otp_verified(email)  # Set flag cho phép reset password
+    return {"message": "OTP hợp lệ. Bạn có thể đặt lại mật khẩu."}
+
+# Đặt lại mật khẩu sau khi xác minh OTP
+async def reset_password(email: str, new_password: str, db: AsyncSession):
+    # Kiểm tra xem OTP đã được verify chưa
+    if not await redis_manager.is_otp_verified(email):
+        raise HTTPException(status_code=400, detail="Vui lòng xác thực OTP trước khi đặt lại mật khẩu")
+    
+    # Tìm người dùng theo email
+    result = await db.execute(select(TaiKhoan).where(TaiKhoan.email == email))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Email không tồn tại")
+    
+    # Cập nhật mật khẩu mới
+    user.mat_khau = new_password
+    await db.commit()
+    
+    # Xóa flag sau khi reset thành công
+    await redis_manager.delete_otp_verified(email)
+    
+    return {"message": "Mật khẩu đã được đặt lại thành công"}
 
 # Đổi mật khẩu
 async def change_password(user_id: int, change: ChangePassword, db: AsyncSession):
@@ -144,3 +196,8 @@ async def change_password(user_id: int, change: ChangePassword, db: AsyncSession
     
     # Trả về phản hồi
     return ChangePasswordResponse(message="Đổi mật khẩu thành công")
+
+# Xác thực OTP - phiên bản mới (dùng để test)
+async def verify_otp_new(email: str, otp: str):
+    print(f"verify_otp_new called with email: {email}, otp: {otp}")
+    return {"message": "OTP hợp lệ. Bạn có thể đặt lại mật khẩu."}
