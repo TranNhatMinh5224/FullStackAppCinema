@@ -29,10 +29,19 @@ class RedisManager:
     async def xoa_ghe_cua_user(self, suat_chieu_id, user_id):
         pattern = f"ghe:*:{suat_chieu_id}"
         keys = await self.redis.keys(pattern)
+        ghe_ids_da_xoa = []
         for key in keys:
             current_user = await self.redis.get(key)
             if current_user == str(user_id):
+                parts = key.split(":")
+                if len(parts) >= 2:
+                    try:
+                        ghe_id = int(parts[1])
+                        ghe_ids_da_xoa.append(ghe_id)
+                    except ValueError:
+                        pass
                 await self.redis.delete(key)
+        return ghe_ids_da_xoa
     
 
     async def close(self):

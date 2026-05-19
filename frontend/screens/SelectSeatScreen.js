@@ -4,13 +4,11 @@ import Icon from "react-native-vector-icons/FontAwesome5";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert } from "react-native";
-import { getSeat, postSeat } from "../service/APIservice";
+import { getSeat, postSeat, deleteSeat } from "../service/APIservice";
+import { API_BASE_URL } from "../service/APIpath";
 import COLORS from "../assets/color";
 import Header from "../components/Header";
 import { ActivityIndicator } from "react-native";
-
-
-
 
 const SelectSeat = ({ route, navigation }) => {
     const { movie, selectedDay, selectedTime, showtimeId } = route.params;
@@ -19,51 +17,186 @@ const SelectSeat = ({ route, navigation }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const slideAnim = useRef(new Animated.Value(0)).current; // Animation value for sliding
     const [isLoading, setIsLoading] = useState(true);
+    const [userId, setUserId] = useState(null);
 
+    const ws = useRef(null);
+    const proceededToCheckout = useRef(false);
 
+    const selectedSeatsRef = useRef(selectedSeats);
+    const seatDataRef = useRef(seatData);
+    const userIdRef = useRef(userId);
 
-    // Fetch seat data from API
+    // Đồng bộ giá trị hiện tại của state vào refs để sử dụng an toàn trong hàm cleanup unmount
     useEffect(() => {
-        // For now, we'll use the static data
-        console.log(showtimeId)
+        selectedSeatsRef.current = selectedSeats;
+    }, [selectedSeats]);
 
+    useEffect(() => {
+        seatDataRef.current = seatData;
+    }, [seatData]);
 
-        // If you want to fetch from API later:
+    useEffect(() => {
+        userIdRef.current = userId;
+    }, [userId]);
+
+    // Lấy thông tin user từ bộ nhớ cục bộ
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const userData = await AsyncStorage.getItem("user");
+                if (userData) {
+                    const user = JSON.parse(userData);
+                    setUserId(parseInt(user.id));
+                }
+            } catch (error) {
+                console.error("Lỗi lấy thông tin user từ AsyncStorage:", error);
+            }
+        };
+        fetchUser();
+    }, []);
+
+    // Lấy dữ liệu ghế ban đầu
+    useEffect(() => {
         const fetchSeatData = async () => {
-            setIsLoading(true); // bắt đầu loading
+            setIsLoading(true);
             try {
                 const response = await getSeat(showtimeId);
                 setSeatData(response || []);
             } catch (error) {
-                console.error("Lỗi lấy ghế:", error);
+                console.error("Lỗi lấy danh sách ghế:", error);
             } finally {
-                setIsLoading(false); // kết thúc loading
+                setIsLoading(false);
+            }
+        };
+        fetchSeatData();
+    }, [showtimeId]);
+
+    // Khởi tạo kết nối WebSocket
+    useEffect(() => {
+        if (!showtimeId || !userId) return;
+
+        const wsUrl = `${API_BASE_URL.replace(/^http/, "ws")}/ws/${showtimeId}/${userId}`;
+        console.log("Đang kết nối WebSocket tới:", wsUrl);
+
+        ws.current = new WebSocket(wsUrl);
+
+        ws.current.onopen = () => {
+            console.log("WebSocket đã kết nối!");
+        };
+
+        ws.current.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                console.log("Tin nhắn WebSocket nhận được:", message);
+
+                if (message.event === "SEATS_LOCKED") {
+                    const { ghe_ids, user_id: lockingUserId } = message;
+                    // Cập nhật sơ đồ ghế: Ghế của người khác khóa sẽ chuyển màu đỏ (dang_giu)
+                    setSeatData((prevData) =>
+                        prevData.map((seat) => {
+                            if (ghe_ids.includes(seat.id)) {
+                                if (lockingUserId !== userId) {
+                                    return { ...seat, trang_thai: "dang_giu" };
+                                }
+                            }
+                            return seat;
+                        })
+                    );
+                } else if (message.event === "SEATS_RELEASED") {
+                    const { ghe_ids } = message;
+                    // Mở khóa ghế về trống
+                    setSeatData((prevData) =>
+                        prevData.map((seat) => {
+                            if (ghe_ids.includes(seat.id)) {
+                                return { ...seat, trang_thai: "trong" };
+                            }
+                            return seat;
+                        })
+                    );
+                } else if (message.event === "ERROR") {
+                    Alert.alert("Thông báo", message.message);
+                    // Đồng bộ lại sơ đồ ghế thực tế từ server
+                    getSeat(showtimeId).then((freshData) => {
+                        if (freshData) setSeatData(freshData);
+                    });
+                }
+            } catch (err) {
+                console.error("Lỗi parse tin nhắn socket:", err);
             }
         };
 
-        fetchSeatData();
+        ws.current.onerror = (error) => {
+            console.log("Lỗi kết nối WebSocket:", error.message);
+        };
 
+        ws.current.onclose = () => {
+            console.log("WebSocket đã đóng");
+        };
 
-    }, []);
+        return () => {
+            if (ws.current) {
+                ws.current.close();
+            }
+        };
+    }, [showtimeId, userId]);
+
+    // Tự động giải phóng ghế qua REST API nếu người dùng hủy/quay lại
+    useEffect(() => {
+        return () => {
+            if (!proceededToCheckout.current && selectedSeatsRef.current.length > 0 && userIdRef.current) {
+                const idsToRelease = selectedSeatsRef.current.map((seat) => {
+                    const info = seatDataRef.current.find((s) => s.so_ghe === seat);
+                    return info ? info.id : null;
+                }).filter((id) => id !== null);
+
+                if (idsToRelease.length > 0) {
+                    console.log("Giải phóng ghế bằng HTTP trước khi unmount:", idsToRelease);
+                    deleteSeat({
+                        suat_chieu_id: showtimeId,
+                        ghe_ids: idsToRelease,
+                        user_id: userIdRef.current,
+                    });
+                }
+            }
+        };
+    }, [showtimeId]);
 
     const toggleSeat = (seat) => {
-        // Find the seat data
-        const seatInfo = seatData.find(s => s.so_ghe === seat);
+        const seatInfo = seatData.find((s) => s.so_ghe === seat);
+        if (!seatInfo) return;
 
-        // If seat is already sold, don't allow selection
-        if (seatInfo && seatInfo.trang_thai === "da_ban") return;
-        if (seatInfo && seatInfo.trang_thai === "dang_giu") return;
+        if (seatInfo.trang_thai === "da_ban") return;
+        if (seatInfo.trang_thai === "dang_giu") return;
 
+        const isCurrentlySelected = selectedSeats.includes(seat);
         let updatedSeats;
-        if (selectedSeats.includes(seat)) {
+
+        if (isCurrentlySelected) {
             updatedSeats = selectedSeats.filter((s) => s !== seat);
+            // Hủy giữ ghế qua socket
+            if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+                ws.current.send(
+                    JSON.stringify({
+                        action: "RELEASE_SEAT",
+                        ghe_ids: [seatInfo.id],
+                    })
+                );
+            }
         } else {
             updatedSeats = [...selectedSeats, seat];
+            // Chiếm giữ ghế qua socket
+            if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+                ws.current.send(
+                    JSON.stringify({
+                        action: "CHOOSE_SEAT",
+                        ghe_ids: [seatInfo.id],
+                    })
+                );
+            }
         }
+
         setSelectedSeats(updatedSeats);
 
-
-        // Show modal if there are selected seats
         if (updatedSeats.length > 0 && !isModalVisible) {
             setIsModalVisible(true);
             slideInModal();
@@ -89,48 +222,17 @@ const SelectSeat = ({ route, navigation }) => {
     };
 
     const getSeatPrice = (seat) => {
-        const seatInfo = seatData.find(s => s.so_ghe === seat);
+        const seatInfo = seatData.find((s) => s.so_ghe === seat);
         return seatInfo ? seatInfo.gia : 0;
     };
 
     const totalPrice = selectedSeats.reduce((total, seat) => total + getSeatPrice(seat), 0);
 
-    // Lấy danh sách `id` của ghế đã chọn
-    const selectedSeatIds = selectedSeats.map(seat => {
-        const seatInfo = seatData.find(s => s.so_ghe === seat);
+    const selectedSeatIds = selectedSeats.map((seat) => {
+        const seatInfo = seatData.find((s) => s.so_ghe === seat);
         return seatInfo ? seatInfo.id : null;
-    }).filter(id => id !== null); // Loại bỏ các giá trị `null`
+    }).filter((id) => id !== null);
 
-    const postghe = async (selectedSeatIds, showtimeId) => {
-        const userData = await AsyncStorage.getItem("user");
-        const user = JSON.parse(userData)
-        const data = {
-            suat_chieu_id: showtimeId,
-            ghe_ids: selectedSeatIds,
-            user_id: parseInt(user.id),
-
-        };
-        console.log(data)
-        try {
-
-
-
-            const response = await postSeat(data);
-            console.log("Đặt ghế thành công:", response);
-
-
-
-
-
-
-
-        } catch (error) {
-
-            console.error("Lỗi đăt ghe:", error);
-
-        }
-
-    };
 
     // Function to organize seats into rows for display
     const organizeSeatsIntoRows = () => {
@@ -280,7 +382,7 @@ const SelectSeat = ({ route, navigation }) => {
                             style={styles.bookButton}
                             onPress={() => {
                                 slideOutModal();
-                                postghe(selectedSeatIds, showtimeId);
+                                proceededToCheckout.current = true; // Đánh dấu chuyển sang trang checkout để bỏ qua cleanup giải phóng ghế
                                 navigation.navigate("Checkout", {
                                     movie: movie,
                                     selectedDay: selectedDay,
